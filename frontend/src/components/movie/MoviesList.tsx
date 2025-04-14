@@ -127,9 +127,12 @@ const MovieList = () => {
               </p>
 
               <div className="mt-4 space-x-2">
-                <button className="bg-blue-500 hover:bg-blue-600 text-white text-sm px-3 py-1 rounded">
+                <Link
+                  to={`/movies/update/${movie._id}`}
+                  className="bg-blue-500 hover:bg-blue-600 text-white text-sm px-3 py-1 rounded"
+                >
                   Edit
-                </button>
+                </Link>
                 <button className="bg-red-500 hover:bg-red-600 text-white text-sm px-3 py-1 rounded">
                   Delete
                 </button>

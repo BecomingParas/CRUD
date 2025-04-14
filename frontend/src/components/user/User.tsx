@@ -19,8 +19,6 @@ const fetchUsers = async (): Promise<TUser[]> => {
 };
 
 const User = () => {
-  const { id } = useParams();
-
   const [search, setSearch] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const usersPerPage = 5;

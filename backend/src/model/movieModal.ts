@@ -13,11 +13,24 @@ const movieSchema = new mongoose.Schema(
       required: true,
     },
     genre: {
+      type: [String],
+      enum: [
+        "Action",
+        "Romantic",
+        "Sci-Fi",
+        "Drama",
+        "Horror",
+        "Comedy",
+        "Thriller",
+      ],
+      required: true,
+    },
+    director: {
       type: String,
       required: true,
     },
     cast: {
-      type: String,
+      type: [String],
       required: true,
     },
     release_year: {
@@ -27,6 +40,8 @@ const movieSchema = new mongoose.Schema(
     average_rating: {
       type: Number,
       required: true,
+      min: 1,
+      max: 10,
     },
   },
   {

@@ -4,6 +4,7 @@ import User from "./components/user/User";
 import AddUser from "./components/user/AddUser";
 import EditUser from "./components/user/EditUser";
 import CreateMovie from "./components/movie/CreateMovie";
+import MoviesList from "./components/movie/MoviesList";
 
 function App() {
   const route = createBrowserRouter([
@@ -19,6 +20,10 @@ function App() {
     {
       path: "/edit/:id",
       element: <EditUser />,
+    },
+    {
+      path: "/movies",
+      element: <MoviesList />,
     },
     {
       path: "/movies/create",

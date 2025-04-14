@@ -1,47 +1,48 @@
 import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
 import { useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link } from "react-router-dom";
 
-export type TUser = {
-  _id: any;
-  username: string;
-  email: string;
-  address: string;
+export type TMovie = {
+  _id: string;
+  title: string;
+  description: string;
+  release_year: number;
+  genre: string[];
+  cast: string[];
+  director: string;
 };
-const fetchUsers = async (): Promise<TUser[]> => {
-  const response = await axios.get("http://localhost:8000/api/users");
-  // Make sure response.data is the actual array of users
-  if (!Array.isArray(response.data)) {
-    throw new Error("Invalid user data received");
-  }
+
+const fetchMovies = async (): Promise<TMovie[]> => {
+  const response = await axios.get("http://localhost:8000/api/movies");
   return response.data;
 };
 
-const User = () => {
-  const { id } = useParams();
-
+const MovieList = () => {
   const [search, setSearch] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
-  const usersPerPage = 5;
+  const moviesPerPage = 6;
 
   const {
-    data: users = [],
+    data: movies = [],
     isLoading,
     isError,
   } = useQuery({
-    queryKey: ["users"],
-    queryFn: fetchUsers,
+    queryKey: ["movies"],
+    queryFn: fetchMovies,
   });
 
-  const filteredUsers = users.filter((user) =>
-    user.username.toLowerCase().includes(search.toLowerCase())
+  const filteredMovies = movies.filter((movie) =>
+    movie.title.toLowerCase().includes(search.toLowerCase())
   );
 
-  const indexOfLastUser = currentPage * usersPerPage;
-  const indexOfFirstUser = indexOfLastUser - usersPerPage;
-  const currentUsers = filteredUsers.slice(indexOfFirstUser, indexOfLastUser);
-  const totalPages = Math.ceil(filteredUsers.length / usersPerPage);
+  const indexOfLastMovie = currentPage * moviesPerPage;
+  const indexOfFirstMovie = indexOfLastMovie - moviesPerPage;
+  const currentMovies = filteredMovies.slice(
+    indexOfFirstMovie,
+    indexOfLastMovie
+  );
+  const totalPages = Math.ceil(filteredMovies.length / moviesPerPage);
 
   const handlePrev = () => setCurrentPage((prev) => Math.max(prev - 1, 1));
   const handleNext = () =>
@@ -50,7 +51,7 @@ const User = () => {
   if (isLoading) {
     return (
       <div className="text-center py-10 text-lg font-medium">
-        Loading users...
+        Loading movies...
       </div>
     );
   }
@@ -58,7 +59,7 @@ const User = () => {
   if (isError) {
     return (
       <div className="text-center py-10 text-red-500 font-medium">
-        Failed to load users.
+        Failed to load movies.
       </div>
     );
   }
@@ -66,27 +67,28 @@ const User = () => {
   return (
     <div className="p-6 max-w-6xl mx-auto">
       <h1 className="text-3xl font-bold text-center mb-6 text-gray-800 dark:text-white">
-        User List
+        Movie List
       </h1>
-      <div className="mb-5 flex gap-4">
+
+      <div className=" gap-6 mb-6">
         <Link
-          to="/addUser"
-          className="bg-blue-500 hover:bg-blue-600 text-white text-sm px-3 py-1 rounded"
+          to="/"
+          className="bg-blue-500 hover:bg-blue-600 text-white text-sm px-3 py-1 rounded mr-7"
         >
-          Add Users
+          users
         </Link>
         <Link
-          to="/movies"
-          className="bg-green-500 hover:bg-green-600 text-white text-sm px-3 py-1 rounded"
+          to="/movies/create"
+          className="bg-blue-500 hover:bg-blue-600 text-white text-sm px-3 py-1 rounded"
         >
-          Add Movies
+          Add Movie
         </Link>
       </div>
 
       <div className="mb-4">
         <input
           type="text"
-          placeholder="Search by username..."
+          placeholder="Search by movie title..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="w-full px-4 py-2 rounded border dark:bg-gray-800 dark:text-white dark:border-gray-600"
@@ -94,29 +96,40 @@ const User = () => {
       </div>
 
       <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-4">
-        {currentUsers.length > 0 ? (
-          currentUsers.map((user, index) => (
+        {currentMovies.length > 0 ? (
+          currentMovies.map((movie) => (
             <div
-              key={index}
+              key={movie._id}
               className="p-4 bg-white dark:bg-gray-900 rounded-xl shadow hover:shadow-lg transition"
             >
               <h2 className="text-xl font-semibold text-indigo-600 dark:text-indigo-400">
-                {user.username}
+                🎬 {movie.title}
               </h2>
-              <p className="text-gray-700 dark:text-gray-300">
-                📧 {user.email}
+              <p className="text-gray-700 dark:text-gray-300 mb-1">
+                🗓️ {movie.release_year}
               </p>
-              <p className="text-gray-600 dark:text-gray-400">
-                🏠 {user.address}
+
+              <p className="text-gray-600 dark:text-gray-400 mb-2 line-clamp-3">
+                {movie.description}
+              </p>
+              <p className="text-sm text-gray-600 dark:text-gray-300">
+                🎬{" "}
+                {movie.genre && Array.isArray(movie.genre)
+                  ? movie.genre.join(", ")
+                  : "No genres"}
+              </p>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">
+                <span className="font-medium">Director:</span> {movie.director}
+              </p>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">
+                <span className="font-medium">Cast:</span>{" "}
+                {movie.cast.join(", ")}
               </p>
 
               <div className="mt-4 space-x-2">
-                <Link
-                  to={`/edit/${user._id}`}
-                  className="bg-blue-500 hover:bg-blue-600 text-white text-sm px-3 py-1 rounded"
-                >
+                <button className="bg-blue-500 hover:bg-blue-600 text-white text-sm px-3 py-1 rounded">
                   Edit
-                </Link>
+                </button>
                 <button className="bg-red-500 hover:bg-red-600 text-white text-sm px-3 py-1 rounded">
                   Delete
                 </button>
@@ -125,13 +138,13 @@ const User = () => {
           ))
         ) : (
           <p className="text-center text-gray-500 col-span-full">
-            No users found.
+            No movies found.
           </p>
         )}
       </div>
 
       {/* Pagination */}
-      {filteredUsers.length > usersPerPage && (
+      {filteredMovies.length > moviesPerPage && (
         <div className="flex justify-center items-center mt-6 space-x-4">
           <button
             onClick={handlePrev}
@@ -156,4 +169,4 @@ const User = () => {
   );
 };
 
-export default User;
+export default MovieList;

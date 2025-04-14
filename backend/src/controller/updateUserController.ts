@@ -11,7 +11,7 @@ export const updateUser = async (req: Request, res: Response) => {
     const updateData = await UserModel.findByIdAndUpdate(id, req.body, {
       new: true,
     });
-    res.status(200).json({ message: "User updated successfully" });
+    res.status(200).json(updateData);
   } catch (error: any) {
     res.status(500).json({ message: error.message });
   }

@@ -4,6 +4,7 @@ import cors from "cors";
 import { connectionMongoDb } from "./utils/connectionMongodb";
 import { UserError } from "./error";
 import { userRoutes } from "./routes/userRoutes";
+import { movieRoutes } from "./routes/movieRoutes";
 const app = express();
 const PORT = env.PORT || 8001;
 
@@ -15,9 +16,17 @@ connectionMongoDb().then(() => {
 // middleware
 
 app.use(express.json());
-app.use(cors());
-//Routes
+// Enable CORS properly
+app.use(
+  cors({
+    origin: "http://localhost:5173",
+    methods: ["GET", "POST", "PUT", "DELETE"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  })
+);
+
 userRoutes(app);
+movieRoutes(app);
 
 //Globally error
 app.use((error: UserError, req: Request, res: Response, next: NextFunction) => {

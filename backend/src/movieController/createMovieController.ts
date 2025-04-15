@@ -1,33 +1,50 @@
-import { MovieModel } from "@/model/movieModal";
-import { createMovieSchema } from "@/service/movieSchema";
-import { createMovie } from "@/service/movieService";
 import { Request, Response } from "express";
+import { MovieModel } from "@/model/movieModal";
+import { uploadFile } from "@/utils/cloudinaryUpload";
 
-export async function createMovieController(req: Request, res: Response) {
+export const createMovieController = async (req: Request, res: Response) => {
   try {
-    const parsed = createMovieSchema.safeParse(req.body);
+    const files = req.files as {
+      poster?: Express.Multer.File[];
+      video?: Express.Multer.File[];
+    };
 
-    if (!parsed.success) {
-      return res.status(400).json({
-        message: "Please fill in valid information.",
-        errors: parsed.error.format(),
-      });
+    // Validate files
+    if (!files?.poster?.[0] || !files?.video?.[0]) {
+      return res.status(400).json({ error: "Both poster and video required" });
     }
 
-    const { title } = parsed.data;
+    const [poster, video] = [files.poster[0], files.video[0]];
 
-    const movieExist = await MovieModel.findOne({ title });
-    if (movieExist) {
-      return res.status(400).json({ message: "Movie already exists." });
-    }
+    // Upload files to Cloudinary
+    const [posterUpload, videoUpload] = await Promise.all([
+      uploadFile(poster.path, {
+        folder: "movie-posters",
+        resource_type: "image",
+      }),
+      uploadFile(video.path, {
+        folder: "movie-videos",
+        resource_type: "video",
+      }),
+    ]);
 
-    const savedMovie = await createMovie(parsed.data);
+    // Create movie document
+    const movieData = {
+      ...req.body,
+      genre: JSON.parse(req.body.genre),
+      cast: JSON.parse(req.body.cast),
+      release_year: Number(req.body.release_year),
+      average_rating: Number(req.body.average_rating),
+      poster_url: posterUpload.secure_url,
+      video_url: videoUpload.secure_url,
+    };
 
-    return res
-      .status(200)
-      .json({ message: "Movie added successfully", movie: savedMovie });
+    const movie = await MovieModel.create(movieData);
+    res.status(201).json(movie);
   } catch (error) {
-    console.error("Create movie error:", error);
-    return res.status(500).json({ message: "Failed to create a movie" });
+    console.error("Error creating movie:", error);
+    res.status(500).json({
+      error: error instanceof Error ? error.message : "Movie creation failed",
+    });
   }
-}
+};

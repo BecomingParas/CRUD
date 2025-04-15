@@ -1,11 +1,11 @@
-import { useParams, useNavigate, Link } from "react-router-dom";
-import { useForm, useFieldArray } from "react-hook-form";
+import { useEffect } from "react";
+import { Link, useNavigate, useParams } from "react-router-dom";
+import { useForm, useFieldArray, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import toast from "react-hot-toast";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
-import { useEffect } from "react";
+import toast from "react-hot-toast";
 
 const genreOptions = [
   "Action",
@@ -26,6 +26,8 @@ const movieSchema = z.object({
   director: z.string().min(1, "Director name is required"),
   release_year: z.coerce.number().min(1990).max(2025),
   average_rating: z.coerce.number().min(1).max(10),
+  poster: z.any().optional(), // Optional on update
+  video: z.any().optional(), // Optional on update
 });
 
 type TMovieForm = z.infer<typeof movieSchema>;
@@ -38,11 +40,20 @@ const UpdateMovie = () => {
   const {
     register,
     handleSubmit,
-    reset,
     control,
+    reset,
     formState: { errors },
   } = useForm<TMovieForm>({
     resolver: zodResolver(movieSchema),
+    defaultValues: {
+      genre: [],
+      cast: [""],
+      title: "",
+      description: "",
+      director: "",
+      release_year: 2000,
+      average_rating: 5,
+    },
   });
 
   const {
@@ -54,42 +65,73 @@ const UpdateMovie = () => {
     name: "cast" as never,
   });
 
-  const { data: movieData, isLoading } = useQuery<TMovieForm>({
+  // Fetch movie data
+  const { data: movie, isLoading } = useQuery({
     queryKey: ["movie", id],
     queryFn: async () => {
       const res = await axios.get(`http://localhost:8000/api/movies/${id}`);
       return res.data;
     },
-    onSuccess: (data) => reset(data),
+    enabled: !!id,
   });
 
+  // Prefill the form
   useEffect(() => {
-    if (movieData) {
-      reset(movieData);
+    if (movie) {
+      reset({
+        ...movie,
+        cast: movie.cast || [""],
+        genre: movie.genre || [],
+        poster: undefined,
+        video: undefined,
+      });
     }
-  }, [movieData, reset]);
+  }, [movie, reset]);
 
   const mutation = useMutation({
-    mutationFn: (data: TMovieForm) =>
-      axios.put(`http://localhost:8000/api/movies/update/${id}`, data),
+    mutationFn: async (formData: FormData) => {
+      const res = await axios.put(
+        `http://localhost:8000/api/movies/update/${id}`,
+        formData,
+        { headers: { "Content-Type": "multipart/form-data" } }
+      );
+      return res.data;
+    },
     onSuccess: () => {
       toast.success("Movie updated successfully!");
       queryClient.invalidateQueries({ queryKey: ["movies"] });
       navigate("/movies");
     },
-    onError: () => {
-      toast.error("Failed to update movie");
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || "Failed to update movie");
     },
   });
 
-  const onSubmit = (data: TMovieForm) => {
-    mutation.mutate(data);
+  const onSubmit = async (data: TMovieForm) => {
+    const formData = new FormData();
+    formData.append("title", data.title);
+    formData.append("description", data.description);
+    formData.append("director", data.director);
+    formData.append("release_year", data.release_year.toString());
+    formData.append("average_rating", data.average_rating.toString());
+    formData.append("genre", JSON.stringify(data.genre));
+    formData.append("cast", JSON.stringify(data.cast));
+
+    // Append new files only if selected
+    if (data.poster?.[0]) formData.append("poster", data.poster[0]);
+    if (data.video?.[0]) formData.append("video", data.video[0]);
+
+    mutation.mutate(formData);
   };
+
+  if (isLoading) {
+    return <p className="text-white p-6">Loading movie data...</p>;
+  }
 
   return (
     <div className="p-6 max-w-2xl mx-auto">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold text-white">Edit Movie</h1>
+        <h1 className="text-3xl font-bold text-white">Update Movie</h1>
         <Link
           to="/movies"
           className="bg-gray-800 hover:bg-gray-700 text-white px-4 py-2 rounded-lg transition-colors"
@@ -98,161 +140,210 @@ const UpdateMovie = () => {
         </Link>
       </div>
 
-      {isLoading ? (
-        <p className="text-white">Loading...</p>
-      ) : (
-        <form
-          onSubmit={handleSubmit(onSubmit)}
-          className="space-y-6 bg-gray-800 p-8 rounded-xl shadow-xl"
-        >
+      <form
+        onSubmit={handleSubmit(onSubmit)}
+        className="space-y-6 bg-gray-800 p-8 rounded-xl shadow-xl"
+      >
+        {/* Title, Description, Genres, etc. — same as CreateMovie */}
+        <div>
+          <label className="block text-lg font-medium text-white mb-2">
+            Title
+          </label>
+          <input
+            {...register("title")}
+            className="w-full px-4 py-3 bg-gray-700 text-white rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+            placeholder="Movie title"
+          />
+          {errors.title && (
+            <p className="text-red-400 mt-1">{errors.title.message}</p>
+          )}
+        </div>
+
+        <div>
+          <label className="block text-lg font-medium text-white mb-2">
+            Description
+          </label>
+          <textarea
+            {...register("description")}
+            className="w-full px-4 py-3 bg-gray-700 text-white rounded-lg focus:ring-2 focus:ring-blue-500 outline-none min-h-[100px]"
+            placeholder="Movie description"
+          />
+          {errors.description && (
+            <p className="text-red-400 mt-1">{errors.description.message}</p>
+          )}
+        </div>
+
+        <div>
+          <label className="block text-lg font-medium text-white mb-2">
+            Genres
+          </label>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+            {genreOptions.map((genre) => (
+              <label
+                key={genre}
+                className="flex items-center space-x-2 bg-gray-700 p-3 rounded-lg hover:bg-gray-600 transition-colors"
+              >
+                <input
+                  type="checkbox"
+                  value={genre}
+                  {...register("genre")}
+                  className="w-4 h-4 text-blue-500 rounded focus:ring-blue-500 bg-gray-800"
+                />
+                <span className="text-white">{genre}</span>
+              </label>
+            ))}
+          </div>
+          {errors.genre && (
+            <p className="text-red-400 mt-1">{errors.genre.message}</p>
+          )}
+        </div>
+
+        {/* Director, Release Year, Rating */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
             <label className="block text-lg font-medium text-white mb-2">
-              Title
+              Director
             </label>
             <input
-              {...register("title")}
+              {...register("director")}
               className="w-full px-4 py-3 bg-gray-700 text-white rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-              placeholder="Movie title"
+              placeholder="Director name"
             />
-            {errors.title && (
-              <p className="text-red-400 mt-1">{errors.title.message}</p>
+            {errors.director && (
+              <p className="text-red-400 mt-1">{errors.director.message}</p>
             )}
           </div>
 
           <div>
             <label className="block text-lg font-medium text-white mb-2">
-              Description
+              Release Year
             </label>
-            <textarea
-              {...register("description")}
-              className="w-full px-4 py-3 bg-gray-700 text-white rounded-lg focus:ring-2 focus:ring-blue-500 outline-none min-h-[100px]"
-              placeholder="Movie description"
+            <input
+              type="number"
+              {...register("release_year")}
+              className="w-full px-4 py-3 bg-gray-700 text-white rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
             />
-            {errors.description && (
-              <p className="text-red-400 mt-1">{errors.description.message}</p>
+            {errors.release_year && (
+              <p className="text-red-400 mt-1">{errors.release_year.message}</p>
             )}
           </div>
 
           <div>
             <label className="block text-lg font-medium text-white mb-2">
-              Genres
+              Average Rating
             </label>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-              {genreOptions.map((genre) => (
-                <label
-                  key={genre}
-                  className="flex items-center space-x-2 bg-gray-700 p-3 rounded-lg hover:bg-gray-600 transition-colors"
+            <input
+              type="number"
+              step="0.1"
+              {...register("average_rating")}
+              className="w-full px-4 py-3 bg-gray-700 text-white rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+            />
+            {errors.average_rating && (
+              <p className="text-red-400 mt-1">
+                {errors.average_rating.message}
+              </p>
+            )}
+          </div>
+        </div>
+
+        {/* Cast */}
+        <div>
+          <label className="block text-lg font-medium text-white mb-2">
+            Cast Members
+          </label>
+          <div className="space-y-3">
+            {castFields.map((field, index) => (
+              <div key={field.id} className="flex gap-3">
+                <input
+                  {...register(`cast.${index}`)}
+                  className="flex-1 px-4 py-3 bg-gray-700 text-white rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                />
+                <button
+                  type="button"
+                  onClick={() => removeCast(index)}
+                  className="px-4 py-2 bg-red-600 hover:bg-red-500 text-white rounded-lg"
+                  disabled={castFields.length === 1}
                 >
+                  Remove
+                </button>
+              </div>
+            ))}
+            <button
+              type="button"
+              onClick={() => appendCast("")}
+              className="mt-2 px-4 py-2 bg-gray-600 hover:bg-gray-500 text-white rounded-lg"
+            >
+              Add Cast Member +
+            </button>
+          </div>
+          {errors.cast && (
+            <p className="text-red-400 mt-1">{errors.cast.message}</p>
+          )}
+        </div>
+
+        {/* Poster and Video Upload */}
+        <div className="space-y-6">
+          <div className="w-full">
+            <div className="flex items-center gap-8 mb-2">
+              <label className="block text-lg font-medium text-white flex-shrink-0">
+                Movie Poster
+              </label>
+              <Controller
+                name="poster"
+                control={control}
+                render={({ field }) => (
                   <input
-                    type="checkbox"
-                    value={genre}
-                    {...register("genre")}
-                    className="w-4 h-4 text-blue-500 rounded focus:ring-blue-500 bg-gray-800"
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => field.onChange(e.target.files)}
+                    className="file-input file-input-bordered file-input-primary flex-1 text-white"
                   />
-                  <span className="text-white">{genre}</span>
-                </label>
-              ))}
+                )}
+              />
             </div>
-            {errors.genre && (
-              <p className="text-red-400 mt-1">{errors.genre.message}</p>
+            {errors.poster && (
+              <p className="text-red-400 mt-1 ml-[calc(25% + 1rem)]">
+                {typeof errors.poster?.message === "string" &&
+                  errors.poster.message}
+              </p>
             )}
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <label className="block text-lg font-medium text-white mb-2">
-                Director
+          <div className="w-full">
+            <div className="flex items-center gap-8 mb-2">
+              <label className="block text-lg font-medium text-white flex-shrink-0">
+                Movie Video
               </label>
-              <input
-                {...register("director")}
-                className="w-full px-4 py-3 bg-gray-700 text-white rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                placeholder="Director name"
-              />
-              {errors.director && (
-                <p className="text-red-400 mt-1">{errors.director.message}</p>
-              )}
-            </div>
-
-            <div>
-              <label className="block text-lg font-medium text-white mb-2">
-                Release Year
-              </label>
-              <input
-                type="number"
-                {...register("release_year")}
-                className="w-full px-4 py-3 bg-gray-700 text-white rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                placeholder="Release year"
-              />
-              {errors.release_year && (
-                <p className="text-red-400 mt-1">
-                  {errors.release_year.message}
-                </p>
-              )}
-            </div>
-
-            <div>
-              <label className="block text-lg font-medium text-white mb-2">
-                Average Rating
-              </label>
-              <input
-                type="number"
-                step="0.1"
-                {...register("average_rating")}
-                className="w-full px-4 py-3 bg-gray-700 text-white rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                placeholder="1-10"
-              />
-              {errors.average_rating && (
-                <p className="text-red-400 mt-1">
-                  {errors.average_rating.message}
-                </p>
-              )}
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-lg font-medium text-white mb-2">
-              Cast Members
-            </label>
-            <div className="space-y-3">
-              {castFields.map((field, index) => (
-                <div key={field.id} className="flex gap-3">
+              <Controller
+                name="video"
+                control={control}
+                render={({ field }) => (
                   <input
-                    {...register(`cast.${index}`)}
-                    className="flex-1 px-4 py-3 bg-gray-700 text-white rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                    placeholder="Cast member name"
+                    type="file"
+                    accept="video/*"
+                    onChange={(e) => field.onChange(e.target.files)}
+                    className="file-input file-input-bordered file-input-primary flex-1 text-white"
                   />
-                  <button
-                    type="button"
-                    onClick={() => removeCast(index)}
-                    className="px-4 py-2 bg-red-600 hover:bg-red-500 text-white rounded-lg transition-colors"
-                    disabled={castFields.length === 1}
-                  >
-                    Remove
-                  </button>
-                </div>
-              ))}
-              <button
-                type="button"
-                onClick={() => appendCast("")}
-                className="mt-2 px-4 py-2 bg-gray-600 hover:bg-gray-500 text-white rounded-lg transition-colors"
-              >
-                Add Cast Member +
-              </button>
+                )}
+              />
             </div>
-            {errors.cast && (
-              <p className="text-red-400 mt-1">{errors.cast.message}</p>
+            {errors.video && (
+              <p className="text-red-400 mt-1 ml-[calc(25% + 1rem)]">
+                {typeof errors.video?.message === "string" &&
+                  errors.video.message}
+              </p>
             )}
           </div>
+        </div>
 
-          <button
-            type="submit"
-            className="w-full py-3 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            disabled={mutation.isPending}
-          >
-            {mutation.isPending ? "Updating..." : "Update Movie"}
-          </button>
-        </form>
-      )}
+        <button
+          type="submit"
+          className="w-full py-3 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          disabled={mutation.isPending}
+        >
+          {mutation.isPending ? "Updating..." : "Update Movie"}
+        </button>
+      </form>
     </div>
   );
 };

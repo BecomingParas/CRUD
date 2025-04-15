@@ -1,5 +1,5 @@
 import { Link, useNavigate } from "react-router-dom";
-import { useForm, useFieldArray } from "react-hook-form";
+import { useForm, useFieldArray, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -25,6 +25,12 @@ const movieSchema = z.object({
   director: z.string().min(1, "Director name is required"),
   release_year: z.coerce.number().min(1990).max(2025),
   average_rating: z.coerce.number().min(1).max(10),
+  poster: z
+    .instanceof(FileList)
+    .refine((files) => files?.length === 1, "Poster is required"),
+  video: z
+    .instanceof(FileList)
+    .refine((files) => files?.length === 1, "Video is required"),
 });
 
 type TMovieForm = z.infer<typeof movieSchema>;
@@ -51,7 +57,6 @@ const CreateMovie = () => {
     },
   });
 
-  // Updated field array implementation
   const {
     fields: castFields,
     append: appendCast,
@@ -62,10 +67,21 @@ const CreateMovie = () => {
   });
 
   const mutation = useMutation({
-    mutationFn: async (newMovie: TMovieForm) => {
+    mutationFn: async (formData: FormData) => {
+      // Add debug logs
+      console.log("FormData entries:");
+      for (const [key, value] of formData.entries()) {
+        console.log(key, value);
+      }
+
       const res = await axios.post(
         "http://localhost:8000/api/movies/create",
-        newMovie
+        formData,
+        {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        }
       );
       return res.data;
     },
@@ -74,14 +90,30 @@ const CreateMovie = () => {
       queryClient.invalidateQueries({ queryKey: ["movies"] });
       navigate("/movies");
     },
-    onError: () => {
-      toast.error("Failed to create movie");
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || "Failed to create movie");
     },
   });
 
-  const onSubmit = (data: TMovieForm) => {
-    console.log("Submitting movie:", data); // data
-    mutation.mutate(data);
+  const onSubmit = async (data: TMovieForm) => {
+    const formData = new FormData();
+
+    // Append all fields with correct names
+    formData.append("title", data.title);
+    formData.append("description", data.description);
+    formData.append("director", data.director);
+    formData.append("release_year", data.release_year.toString());
+    formData.append("average_rating", data.average_rating.toString());
+
+    // Handle arrays as JSON strings
+    formData.append("genre", JSON.stringify(data.genre));
+    formData.append("cast", JSON.stringify(data.cast));
+
+    // Append files with correct field names
+    formData.append("poster", data.poster[0]);
+    formData.append("video", data.video[0]);
+
+    mutation.mutate(formData);
   };
 
   return (
@@ -235,6 +267,60 @@ const CreateMovie = () => {
           {errors.cast && (
             <p className="text-red-400 mt-1">{errors.cast.message}</p>
           )}
+        </div>
+        {/* File Upload Section */}
+        <div className="space-y-6">
+          {/* Poster Upload */}
+          <div className="w-full">
+            <div className="flex items-center gap-8 mb-2">
+              <label className="block text-lg font-medium text-white flex-shrink-0">
+                Movie Poster
+              </label>
+              <Controller
+                name="poster"
+                control={control}
+                render={({ field }) => (
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => field.onChange(e.target.files)}
+                    className="file-input file-input-bordered file-input-primary flex-1 text-white"
+                  />
+                )}
+              />
+            </div>
+            {errors.poster && (
+              <p className="text-red-400 mt-1 ml-[calc(25% + 1rem)]">
+                {errors.poster.message}
+              </p>
+            )}
+          </div>
+
+          {/* Video Upload */}
+          <div className="w-full">
+            <div className="flex items-center gap-8 mb-2">
+              <label className="block text-lg font-medium text-white flex-shrink-0">
+                Movie Video
+              </label>
+              <Controller
+                name="video"
+                control={control}
+                render={({ field }) => (
+                  <input
+                    type="file"
+                    accept="video/*"
+                    onChange={(e) => field.onChange(e.target.files)}
+                    className="file-input file-input-bordered file-input-primary flex-1 text-white"
+                  />
+                )}
+              />
+            </div>
+            {errors.video && (
+              <p className="text-red-400 mt-1 ml-[calc(25% + 1rem)]">
+                {errors.video.message}
+              </p>
+            )}
+          </div>
         </div>
 
         <button

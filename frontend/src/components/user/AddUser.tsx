@@ -6,6 +6,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
 import toast from "react-hot-toast";
 
+
 const userSchema = z.object({
   username: z.string().min(3, "Username must be at least 3 characters"),
   email: z.string().email("Invalid email address"),
@@ -64,7 +65,6 @@ const AddUser = () => {
             Username:
           </label>
           <input
-            id="username"
             type="text"
             {...register("username")}
             className="w-full px-4 py-2 border rounded dark:bg-gray-800 dark:text-white"
@@ -82,7 +82,6 @@ const AddUser = () => {
             Email:
           </label>
           <input
-            id="email"
             type="email"
             {...register("email")}
             className="w-full px-4 py-2 border rounded dark:bg-gray-800 dark:text-white"

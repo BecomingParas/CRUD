@@ -43,6 +43,16 @@ const movieSchema = new mongoose.Schema(
       min: 1,
       max: 10,
     },
+    poster_url: {
+      type: String,
+      required: true,
+      match: [/^https?:\/\/.+/, "Invalid poster URL format"],
+    },
+    video_url: {
+      type: String,
+      required: true,
+      match: [/^https?:\/\/.+/, "Invalid video URL format"],
+    },
   },
   {
     timestamps: true,

@@ -6,7 +6,7 @@ export const getMovieById = async (req: Request, res: Response) => {
     const id = req.params.id;
     const movieExist = await MovieModel.findById(id);
     if (!movieExist) {
-      res.status(404).json({ message: "Movie not found" });
+      return res.status(404).json({ message: "Movie not found" });
     }
     res.status(200).json(movieExist);
   } catch (error: any) {

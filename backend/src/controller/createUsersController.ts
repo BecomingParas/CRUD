@@ -14,7 +14,8 @@ export async function createUserController(
     const { email } = userData;
     const userExist = await UserModel.findOne({ email });
     if (userExist) {
-      return res.status(400).json({ message: "user already exist" });
+      res.status(400).json({ message: "user already exist" });
+      return;
     }
     const parsed = createUserSchema.safeParse(userData);
     if (!parsed.success) {

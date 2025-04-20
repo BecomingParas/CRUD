@@ -11,7 +11,8 @@ export const createMovieController = async (req: Request, res: Response) => {
 
     // Validate files
     if (!files?.poster?.[0] || !files?.video?.[0]) {
-      return res.status(400).json({ error: "Both poster and video required" });
+      res.status(400).json({ error: "Both poster and video required" });
+      return;
     }
 
     const [poster, video] = [files.poster[0], files.video[0]];

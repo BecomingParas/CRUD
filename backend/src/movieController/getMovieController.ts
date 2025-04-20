@@ -5,7 +5,8 @@ export const getAllMovie = async (req: Request, res: Response) => {
   try {
     const movieData = await MovieModel.find();
     if (!movieData || movieData.length === 0) {
-      return res.status(404).json({ message: "Movie not found" });
+      res.status(404).json({ message: "Movie not found" });
+      return;
     }
     res.status(200).json(movieData);
   } catch (error: any) {

@@ -9,7 +9,8 @@ export const getAllUsers = async (
   try {
     const userData = await UserModel.find();
     if (!userData || userData.length === 0) {
-      return res.status(404).json({ message: "User data not found" });
+      res.status(404).json({ message: "User data not found" });
+      return;
     }
     res.status(200).json(userData);
   } catch (error: any) {

@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
-import { MovieModel } from "@/model/movieModal";
 import { uploadFile } from "@/utils/cloudinaryUpload";
+import { createMovie } from "@/service/movieService";
 
 export const createMovieController = async (req: Request, res: Response) => {
   try {
@@ -9,14 +9,12 @@ export const createMovieController = async (req: Request, res: Response) => {
       video?: Express.Multer.File[];
     };
 
-    // Validate files
     if (!files?.poster?.[0] || !files?.video?.[0]) {
       return res.status(400).json({ error: "Both poster and video required" });
     }
 
     const [poster, video] = [files.poster[0], files.video[0]];
 
-    // Upload files to Cloudinary
     const [posterUpload, videoUpload] = await Promise.all([
       uploadFile(poster.path, {
         folder: "movie-posters",
@@ -28,18 +26,19 @@ export const createMovieController = async (req: Request, res: Response) => {
       }),
     ]);
 
-    // Create movie document
-    const movieData = {
-      ...req.body,
+    const movieInput = {
+      title: req.body.title,
+      description: req.body.description,
       genre: JSON.parse(req.body.genre),
-      cast: JSON.parse(req.body.cast),
       release_year: Number(req.body.release_year),
       average_rating: Number(req.body.average_rating),
+      cast: JSON.parse(req.body.cast),
+      director: req.body.director,
       poster_url: posterUpload.secure_url,
       video_url: videoUpload.secure_url,
     };
 
-    const movie = await MovieModel.create(movieData);
+    const movie = await createMovie(movieInput);
     res.status(201).json(movie);
   } catch (error) {
     console.error("Error creating movie:", error);

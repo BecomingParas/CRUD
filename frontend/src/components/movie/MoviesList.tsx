@@ -157,7 +157,7 @@ const MovieList = () => {
               </p>
 
               {/* Cast & Director */}
-              <div className="space-y-2 text-sm">
+              <div className="space-y-2 text-sm text-white">
                 <p className="truncate">
                   <span className="font-semibold">Director:</span>{" "}
                   {movie.director}

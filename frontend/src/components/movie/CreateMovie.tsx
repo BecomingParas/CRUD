@@ -90,8 +90,8 @@ const CreateMovie = () => {
       queryClient.invalidateQueries({ queryKey: ["movies"] });
       navigate("/movies");
     },
-    onError: (error: any) => {
-      toast.error(error.response?.data?.message || "Failed to create movie");
+    onError: (error) => {
+      toast.error(error.message || "Failed to create movie");
     },
   });
 

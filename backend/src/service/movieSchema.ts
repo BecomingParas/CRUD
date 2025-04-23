@@ -34,6 +34,7 @@ export const createMovieSchema = z.object({
     .min(0, "Rating cannot be lower than 0")
     .max(10, "Rating cannot exceed 10")
     .default(0),
+  created_by_id: z.string().optional(),
   poster_url: z
     .string()
     .url("Invalid poster URL format")
@@ -42,4 +43,8 @@ export const createMovieSchema = z.object({
     .string()
     .url("Invalid video URL format")
     .regex(/\.(mp4|mov|avi)$/i, "Video must be MP4, MOV, or AVI format"),
+  category: z
+    .enum(["featured", "top_rated", "recent"])
+    .optional()
+    .default("featured"),
 });

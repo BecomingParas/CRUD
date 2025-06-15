@@ -7,7 +7,8 @@ import { userRoutes } from "./routes/userRoutes";
 import { movieRoutes } from "./routes/movieRoutes";
 const app = express();
 const PORT = env.PORT || 8001;
-
+import dotenv from "dotenv";
+dotenv.config();
 // connection to mongodb
 connectionMongoDb().then(() => {
   console.log(`MonoDB connected ✅`);

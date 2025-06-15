@@ -5,7 +5,7 @@ import mongoose from "mongoose";
 
 export async function connectionMongoDb() {
   try {
-    await mongoose.connect(process.env.MONGO_DB_URI || "", {
+    await mongoose.connect(process.env.MONGO_URI || "", {
       dbName: "users",
     });
     console.log("Mongodb Database connected");

@@ -1,10 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
 import { useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link } from "react-router-dom";
 
 export type TUser = {
-  _id: any;
+  _id: string;
   username: string;
   email: string;
   address: string;
